@@ -211,6 +211,6 @@ if __name__ == "__main__":
         pcd1.points = o3d.utility.Vector3dVector(warped_points)
         o3d.visualization.draw_geometries([pcd1, pcd2])
 
-        o3d.io.write_point_cloud("result.ply", pcd1)
+        o3d.io.write_point_cloud("outputs/result.ply", pcd1)
     """dump results"""
     # o3d.io.write_triangle_mesh("sim3_demo/things4D/" + sname + "-fit.ply", src_mesh)
