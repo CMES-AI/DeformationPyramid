@@ -5,7 +5,7 @@ import open3d as o3d
 
 import torch.optim as optim
 
-import  yaml
+import yaml
 from easydict import EasyDict as edict
 
 from utils.benchmark_utils import setup_seed
@@ -23,7 +23,7 @@ setup_seed(0)
 
 
 if __name__ == "__main__":
-
+    # default
     config = {
         "gpu_mode": True,
 
@@ -47,6 +47,29 @@ if __name__ == "__main__":
         "w_ldmk": 0,
         "w_cd": 0.1
     }
+    # config = {
+    #     "gpu_mode": True,
+
+    #     "iters": 2000,
+    #     "lr": 0.01,
+    #     "max_break_count": 15,
+    #     "break_threshold_ratio": 0.0004,
+
+    #     "samples": 6000,
+
+    #     "motion_type": "Sim3",
+    #     "rotation_format": "euler",
+
+    #     "m": 9,
+    #     "k0": -8,
+    #     "depth": 4,
+    #     "width": 128,
+    #     "act_fn": "relu",
+
+    #     "w_reg": 0,
+    #     "w_ldmk": 0,
+    #     "w_cd": 0.1
+    # }
 
     config = edict(config)
 
@@ -57,36 +80,45 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', type=str, help= 'Path to the src mesh.')
-    parser.add_argument('-t', type=str, help='Path to the tgt mesh.')
+    parser.add_argument('-type', type=str, default='mesh', help= 'Type of inputs (mesh/point)')
+    parser.add_argument('-s', type=str, help= 'Path to the source mesh/point cloud.')
+    parser.add_argument('-t', type=str, help='Path to the target mesh/point cloud.')
     args = parser.parse_args()
-
 
     S=args.s
     T=args.t
 
     """read S, sample pts"""
-    src_mesh = o3d.io.read_triangle_mesh( S )
-    src_mesh.compute_vertex_normals()
-    pcd1 =  src_mesh.sample_points_uniformly(number_of_points=config.samples)
-    pcd1.paint_uniform_color([0, 0.706, 1])
+    if (args.type == 'mesh'):
+        src_mesh = o3d.io.read_triangle_mesh( S )
+        src_mesh.compute_vertex_normals()
+        pcd1 =  src_mesh.sample_points_uniformly(number_of_points=config.samples)
+    elif (args.type == 'point'):
+        pcd1 = o3d.io.read_point_cloud( S )
+    # pcd1.paint_uniform_color([0, 0.706, 1])
+    transform_matrix = np.array([[0.07, 0.98, 0.18, -105.0],
+                                 [0.97, -0.02, -0.22, -22.0],
+                                 [-0.22, 0.2, -0.95, 515.0],
+                                 [0.0, 0.0, 0.0, 1.0]])
+    pcd1.transform(transform_matrix)
     src_pcd = np.asarray(pcd1.points, dtype=np.float32)
 
-    o3d.visualization.draw_geometries([src_mesh])
+    o3d.visualization.draw_geometries([pcd1])
 
     """read T, sample pts"""
-    tgt_mesh = o3d.io.read_triangle_mesh( T )
-    tgt_mesh.compute_vertex_normals()
-    pcd2 =  tgt_mesh.sample_points_uniformly(number_of_points=config.samples)
+    if (args.type == 'mesh'):
+        tgt_mesh = o3d.io.read_triangle_mesh( T )
+        tgt_mesh.compute_vertex_normals()
+        pcd2 =  tgt_mesh.sample_points_uniformly(number_of_points=config.samples)
+    elif (args.type == 'point'):
+        pcd2 = o3d.io.read_point_cloud( T )
     tgt_pcd = np.asarray(pcd2.points, dtype=np.float32)
 
-    o3d.visualization.draw_geometries([tgt_mesh])
+    o3d.visualization.draw_geometries([pcd2])
 
 
     """load data"""
     src_pcd, tgt_pcd = map( lambda x: torch.from_numpy(x).to(config.device), [src_pcd, tgt_pcd ] )
-
-
 
     """construct model"""
     NDP = Deformation_Pyramid(depth=config.depth,
@@ -159,13 +191,26 @@ if __name__ == "__main__":
 
 
     """warp-original mesh verttices"""
-    NDP.gradient_setup(optimized_level=-1)
-    mesh_vert = torch.from_numpy(np.asarray(src_mesh.vertices, dtype=np.float32)).to(config.device)
-    mesh_vert = mesh_vert - src_mean
-    warped_vert, data = NDP.warp(mesh_vert)
-    warped_vert = warped_vert.detach().cpu().numpy()
-    src_mesh.vertices = o3d.utility.Vector3dVector(warped_vert)
-    o3d.visualization.draw_geometries([src_mesh])
+    if (args.type == 'mesh'):
+        NDP.gradient_setup(optimized_level=-1)
+        mesh_vert = torch.from_numpy(np.asarray(src_mesh.vertices, dtype=np.float32)).to(config.device)
+        mesh_vert = mesh_vert - src_mean
+        warped_vert, data = NDP.warp(mesh_vert)
+        warped_vert = warped_vert.detach().cpu().numpy()
+        src_mesh.vertices = o3d.utility.Vector3dVector(warped_vert)
+        o3d.visualization.draw_geometries([src_mesh])
 
+        """dump results"""
+        # o3d.io.write_triangle_mesh("sim3_demo/things4D/" + sname + "-fit.ply", src_mesh)
+    elif (args.type == 'point'):
+        NDP.gradient_setup(optimized_level=-1)
+        points = torch.from_numpy(np.asarray(pcd1.points, dtype=np.float32)).to(config.device)
+        points = points - src_mean
+        warped_points, data = NDP.warp(points)
+        warped_points = warped_points.detach().cpu().numpy()
+        pcd1.points = o3d.utility.Vector3dVector(warped_points)
+        o3d.visualization.draw_geometries([pcd1, pcd2])
+
+        o3d.io.write_point_cloud("result.ply", pcd1)
     """dump results"""
     # o3d.io.write_triangle_mesh("sim3_demo/things4D/" + sname + "-fit.ply", src_mesh)

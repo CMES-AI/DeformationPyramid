@@ -50,8 +50,9 @@ act_fn: relu
 
 
 #dataset
-data_root : "data/split/"
-split: { 'test': "4DMatch-F" }
+# data_root : "data/split/"
+data_root : "/mnt/obj_philip/pointcloud_open_data/4DMatch/split/"
+split: { 'test': "4DMatch" }
 
 #experiment
 exp_dir :  !join [ *inlier_thr  ]

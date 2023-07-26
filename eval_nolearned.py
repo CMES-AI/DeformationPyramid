@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     # backup the experiment
     os.system(f'cp -r config {config.snapshot_dir}')
-    os.system(f'cp -r data {config.snapshot_dir}')
+    os.system(f'cp -r /mnt/obj_philip/pointcloud_open_data/4DMatch {config.snapshot_dir}')
     os.system(f'cp -r model {config.snapshot_dir}')
     os.system(f'cp -r utils {config.snapshot_dir}')
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     model = Registration(config)
     timer = Timers()
 
-    splits = ['4DMatch-F', '4DLoMatch-F']
+    splits = ['4DMatch', '4DLoMatch']
 
     for benchmark in splits:
 

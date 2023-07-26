@@ -11,7 +11,7 @@ import argparse
 
 
 from model.registration import Registration
-import  yaml
+import yaml
 from easydict import EasyDict as edict
 from model.loss import compute_flow_metrics
 
@@ -51,7 +51,8 @@ if __name__ == "__main__":
 
     # backup the experiment
     os.system(f'cp -r config {config.snapshot_dir}')
-    os.system(f'cp -r data {config.snapshot_dir}')
+    # os.system(f'cp -r data {config.snapshot_dir}')
+    os.system(f'cp -r /mnt/obj_philip/pointcloud_open_data/4DMatch {config.snapshot_dir}')
     os.system(f'cp -r model {config.snapshot_dir}')
     os.system(f'cp -r utils {config.snapshot_dir}')
 
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     from correspondence.datasets.dataloader import get_dataloader
 
 
-    splits = [ '4DMatch-F', '4DLoMatch-F' ]
+    splits = [ '4DMatch', '4DLoMatch' ]
+    # splits = [ '4DMatch-F', '4DLoMatch-F' ]
 
 
     for split in splits:
@@ -91,11 +93,13 @@ if __name__ == "__main__":
         logger = Logger(os.path.join(config.snapshot_dir, config.split["test"] + ".log"))
 
         num_iter =  len(test_set)
-        c_loader_iter = test_loader.__iter__()
+        # c_loader_iter = test_loader.__iter__()
+        c_loader_iter = iter(test_loader)
 
         for c_iter in tqdm(range(num_iter)):
 
-            inputs = c_loader_iter.next()
+            # inputs = c_loader_iter.next()
+            inputs = next(c_loader_iter)
 
 
             for k, v in inputs.items():
@@ -189,12 +193,12 @@ if __name__ == "__main__":
 
 
 
-        message = f'{c_iter}/{len(test_set)}: '
-        for key, value in stats_meter.items():
-            message += f'{key}: {value.avg:.3f}\t'
-        logger.write(message + '\n')
+            message = f'{c_iter}/{len(test_set)}: '
+            for key, value in stats_meter.items():
+                message += f'{key}: {value.avg:.3f}\t'
+            logger.write(message + '\n')
 
-        print("score on ", split, '\n', message)
+            print("score on ", split, '\n', message)
 
 
 
